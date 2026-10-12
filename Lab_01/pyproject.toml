@@ -14,8 +14,6 @@ authors = [
 
 [project.scripts]
 bank-system = "bank_system.main:main"
-student-project = "student_project.main:main"
-student-manager = "bank_system.main:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
