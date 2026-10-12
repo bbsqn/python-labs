@@ -1,15 +1,20 @@
+"""Головний модуль програми банківської системи."""
+
 import sys
 from pathlib import Path
 
+# Add src to sys.path when executed directly
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from bank_system.config import CURRENCY
-from bank_system.exceptions import BankError
-from bank_system.models import Account
-from bank_system.services import (
+from bank_system.config import CURRENCY  # noqa: E402
+from bank_system.exceptions import BankError  # noqa: E402
+from bank_system.models import Account  # noqa: E402
+from bank_system.services import (  # noqa: E402
     calculate_average_balance,
     calculate_total_funds,
+    check_balance,
     deposit,
+    filter_by_balance,
     find_account,
     find_accounts_by_client,
     find_richest_client,
@@ -42,7 +47,10 @@ def print_accounts(accounts: list[Account]) -> None:
 
 def read_amount(prompt: str) -> float:
     while True:
-        raw_value = input(prompt).strip().replace(",", ".")
+        try:
+            raw_value = input(prompt).strip().replace(",", ".")
+        except (EOFError, KeyboardInterrupt):
+            return 0.0
         try:
             return float(raw_value)
         except ValueError:
@@ -64,8 +72,12 @@ def print_menu() -> None:
 
 def run_menu(accounts: list[Account]) -> None:
     while True:
-        print_menu()
-        command = input("Оберіть команду: ").strip()
+        try:
+            print_menu()
+            command = input("Оберіть команду: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nДо побачення.")
+            break
 
         if command == "1":
             print_accounts(accounts)
@@ -102,13 +114,17 @@ def run_menu(accounts: list[Account]) -> None:
             if account is None:
                 print("Рахунок не знайдено.")
             else:
-                print(f"Баланс рахунку {number}: {account.balance:.2f} {CURRENCY}")
+                print(
+                    f"Баланс рахунку {number}: "
+                    f"{account.balance:.2f} {CURRENCY}"
+                )
 
         elif command == "5":
             query = input("Ім'я клієнта або номер рахунку: ").strip()
             by_number = find_account(accounts, query)
             results = (
-                [by_number] if by_number is not None
+                [by_number]
+                if by_number is not None
                 else find_accounts_by_client(accounts, query)
             )
             print_accounts(results)
@@ -142,7 +158,45 @@ def run_menu(accounts: list[Account]) -> None:
 def main() -> None:
     accounts = create_demo_accounts()
     print("Демонстраційні дані завантажено.")
-    run_menu(accounts)
+    print_accounts(accounts)
+
+    print("\n--- Демонстрація операцій ---")
+    account = find_account(accounts, "UA100001")
+    if account is not None:
+        print(
+            f"Початковий баланс {account.account_number}: "
+            f"{check_balance(account):.2f} {CURRENCY}"
+        )
+        deposit(account, 500.0)
+        print(f"Після поповнення на 500: {account.balance:.2f} {CURRENCY}")
+        withdraw(account, 200.0)
+        print(f"Після списання 200: {account.balance:.2f} {CURRENCY}")
+
+    found = find_account(accounts, "UA100002")
+    if found is not None:
+        print(
+            f"\nЗнайдено рахунок: {found.account_number} "
+            f"({found.client_name})"
+        )
+
+    total = calculate_total_funds(accounts)
+    average = calculate_average_balance(accounts)
+    print(f"\nЗагальна сума коштів банку: {total:.2f} {CURRENCY}")
+    print(f"Середній баланс: {average:.2f} {CURRENCY}")
+
+    richest = find_richest_client(accounts)
+    if richest is not None:
+        print(
+            f"Найбагатший клієнт: {richest.client_name} "
+            f"({richest.balance:.2f} {CURRENCY})"
+        )
+
+    rich_accounts = filter_by_balance(accounts, min_balance=1000.0)
+    print(f"Рахунків із балансом >= 1000: {len(rich_accounts)}")
+
+    # Інтерактивне меню запускається тільки за наявності tty терміналу
+    if sys.stdin.isatty():
+        run_menu(accounts)
 
 
 if __name__ == "__main__":
