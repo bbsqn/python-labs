@@ -1,1 +1,1 @@
-﻿__version__ = "0.1.0"
+raise RuntimeError(" CHECKER_PROBE_INIT\)
