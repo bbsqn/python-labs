@@ -1,7 +1,10 @@
 """Моделі даних банківської системи."""
 
 from dataclasses import dataclass
-from bank_system.exceptions import InsufficientFundsError, NegativeAmountError
+from bank_system.exceptions import (
+    InsufficientFundsError,
+    NegativeAmountError,
+)
 
 
 @dataclass

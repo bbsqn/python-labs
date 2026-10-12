@@ -3,7 +3,7 @@ requires = ["setuptools>=70"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bank-system"
+name = "student-project"
 version = "0.1.0"
 description = "Laboratory work for Professional Python"
 readme = "README.md"
@@ -13,6 +13,6 @@ authors = [
 ]
 
 [project.scripts]
+student-project = "student_project.main:main"
 bank-system = "bank_system.main:main"
-student-project = "bank_system.main:main"
-student-manager = "bank_system.main:main"
+student-manager = "student_project.main:main"
