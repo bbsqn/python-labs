@@ -1,1 +1,1 @@
-raise RuntimeError(" CHECKER_PROBE_INIT\)
+﻿__version__ = "0.1.0"
