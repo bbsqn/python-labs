@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-processor"
+version = "0.1.0"
+description = "Laboratory work 2 for Professional Python"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Зінчук Остап" }
+]
+
+[project.scripts]
+data-processor = "data_processor.main:main"
+bank-processor = "data_processor.main:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

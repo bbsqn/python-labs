@@ -1,0 +1,41 @@
+"""Analytics forwarding."""
+
+from data_processor.analytics import (
+    OperationTracker,
+    calculate_average,
+    calculate_average_balance,
+    calculate_average_values,
+    calculate_total_funds,
+    create_account_record,
+    create_balance_filter,
+    create_grade_filter,
+    create_record,
+    create_type_filter,
+    export_summary,
+    find_best_student,
+    find_poorest_account,
+    find_richest_account,
+    pipeline,
+    sort_by_balance,
+    sort_by_grade,
+)
+
+__all__ = [
+    "calculate_total_funds",
+    "calculate_average_balance",
+    "calculate_average",
+    "find_richest_account",
+    "find_best_student",
+    "find_poorest_account",
+    "sort_by_balance",
+    "sort_by_grade",
+    "calculate_average_values",
+    "create_account_record",
+    "create_record",
+    "create_balance_filter",
+    "create_grade_filter",
+    "create_type_filter",
+    "OperationTracker",
+    "export_summary",
+    "pipeline",
+]

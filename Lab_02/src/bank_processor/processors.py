@@ -1,0 +1,41 @@
+"""Processors forwarding."""
+
+from data_processor.processors import (
+    count_accounts_by_type,
+    count_students_by_group,
+    create_account_index,
+    create_student_index,
+    filter_by_group,
+    filter_by_min_balance,
+    filter_by_type,
+    filter_items,
+    find_account_by_index,
+    find_account_by_number,
+    find_linear,
+    get_unique_groups,
+    get_unique_types,
+    group_accounts_by_type,
+    group_by_nested,
+    group_students,
+    sort_accounts,
+)
+
+__all__ = [
+    "get_unique_types",
+    "get_unique_groups",
+    "create_account_index",
+    "create_student_index",
+    "find_account_by_number",
+    "find_linear",
+    "find_account_by_index",
+    "filter_by_type",
+    "filter_by_group",
+    "filter_by_min_balance",
+    "group_accounts_by_type",
+    "group_students",
+    "count_accounts_by_type",
+    "count_students_by_group",
+    "filter_items",
+    "sort_accounts",
+    "group_by_nested",
+]
