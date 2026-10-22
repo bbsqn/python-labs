@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stream-processor"
+version = "0.1.0"
+description = "Laboratory work 3 for Professional Python"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Зінчук Остап" }
+]
+
+[project.scripts]
+stream-processor = "stream_processor.main:main"
+bank-stream = "stream_processor.main:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
