@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "domain-app"
+version = "0.1.0"
+description = "Laboratory work 4: Professional OOP and Type System in Python"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Зінчук Остап" }
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.10",
+    "flake8>=7.0",
+    "pytest>=8.0",
+    "reportlab>=4.2",
+    "pypdf>=4.0"
+]
+
+[project.scripts]
+domain-app = "domain_app.main:main"
+bank-app = "domain_app.main:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
