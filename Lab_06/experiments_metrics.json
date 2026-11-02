@@ -1,0 +1,50 @@
+{
+  "exp1": {
+    "title": "Слабкі тести проти сильних (execution != verification)",
+    "runs": 500,
+    "weak_mutation_kill_rate": "0.0%",
+    "strong_mutation_kill_rate": "100.0%",
+    "conclusion": "Слабкий тест створює хибне відчуття надійності (0% виявлених дефектів), сильний тест фіксує 100% мутацій."
+  },
+  "exp2": {
+    "title": "Тестове покриття без тверджень проти перевірки тверджень",
+    "statement_coverage": "100.0%",
+    "defect_detection_without_assertions": "0.0%",
+    "defect_detection_with_assertions": "100.0%",
+    "conclusion": "100% покриття коду без строгих assert не гарантує відсутність критичних дефектів."
+  },
+  "exp3": {
+    "title": "Аналіз покриття розгалужень (Branch Coverage)",
+    "single_case_branch_cov": "25.0%",
+    "full_suite_branch_cov": "100.0%",
+    "branches_count": 5,
+    "conclusion": "Аналіз розгалужень виявляє неперевірені крайові умови, недосяжні звичайним лінійним тестуванням."
+  },
+  "exp4": {
+    "title": "Порівняння Mock-об'єктів та Fake-репозиторію",
+    "iterations": 2000,
+    "mock_duration_ms": 48.57,
+    "fake_duration_ms": 26.07,
+    "mock_us_per_op": 24.28,
+    "fake_us_per_op": 13.03,
+    "conclusion": "Mock ідеальний для перевірки контрактів протоколу, Fake забезпечує високу швидкість та перевірку стану."
+  },
+  "exp5": {
+    "title": "Flaky-тести (випадковість/час) проти детермінованих",
+    "unseeded_random_stability": "95.0% (5% випадкових падінь у CI)",
+    "deterministic_stability": "100.0% (повна ізоляція часу та ґрунтовна повторюваність)",
+    "conclusion": "Фіксація часу та генераторів псевдовипадкових чисел усуває нестійкість тестів у пайплайнах CI/CD."
+  },
+  "exp6": {
+    "title": "Ізоляція файлової системи через tmp_path проти спільного шляху",
+    "shared_path_collision_risk": "85.0% при паралельному запуску",
+    "tmp_path_collision_risk": "0.0% (гарантована унікальність шляху)",
+    "conclusion": "Фікстура tmp_path усуває побічні ефекти між тестами та забезпечує атомарність кожного сценарію."
+  },
+  "exp7": {
+    "title": "Тестування сценаріїв відмови через mock.side_effect",
+    "failure_simulation_reliability": "100.0%",
+    "graceful_error_handling_verified": true,
+    "conclusion": "side_effect є ключовим інструментом для верифікації відмовостійкості системи до зовнішніх аварій."
+  }
+}

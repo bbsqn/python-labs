@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bank-system-testing"
+version = "0.1.0"
+description = "Laboratory work 6: Automated testing of Python programs (Variant 4: Bank Account System)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Остап Зінчук" }
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pytest-asyncio>=0.23",
+    "mypy>=1.10",
+    "flake8>=7.0",
+    "pyyaml>=6.0",
+    "types-PyYAML>=6.0",
+    "reportlab>=4.2",
+    "pypdf>=4.0"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --strict-markers"
+
+[tool.coverage.run]
+branch = true
+source = ["reliable_importer"]
+omit = [
+    "*/__pycache__/*",
+    "*/tests/*"
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:"
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
