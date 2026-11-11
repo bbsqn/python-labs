@@ -43,3 +43,4 @@ class AsyncBankingClient(Protocol):
     ) -> dict[str, str]:
         """Асинхронний запит авторизації транзакції у платіжному провайдері."""
         ...
+

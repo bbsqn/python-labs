@@ -33,3 +33,4 @@ class FakeAccountRepository:
     def __contains__(self, account_number: str) -> bool:
         """Перевірити наявність рахунку за номером."""
         return account_number in self._accounts
+

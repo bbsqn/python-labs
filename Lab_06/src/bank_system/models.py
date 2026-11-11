@@ -75,3 +75,4 @@ class AccountRecord:
     def to_dict(self) -> dict[str, object]:
         """Серіалізація запису."""
         return asdict(self)
+

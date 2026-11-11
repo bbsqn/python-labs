@@ -73,3 +73,4 @@ def export_accounts_json(accounts: list[Account], path: Path) -> None:
         path.write_text(serialized, encoding="utf-8")
     except (OSError, TypeError) as err:
         raise DataExportError(f"Помилка експорту в JSON: {err}") from err
+
