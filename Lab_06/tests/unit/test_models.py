@@ -158,3 +158,13 @@ def test_account_float_conversion() -> None:
     )
     assert isinstance(account.balance, float)
     assert account.balance == pytest.approx(100.0)
+
+
+def test_account_client_name_alias_and_check_balance(sample_account: Account) -> None:
+    """Перевірка властивості client_name та методу check_balance."""
+    assert sample_account.client_name == "Остап Зінчук"
+    sample_account.client_name = "Остап Зінчук (VIP)"
+    assert sample_account.client == "Остап Зінчук (VIP)"
+    assert sample_account.check_balance() == pytest.approx(1500.50)
+    assert sample_account.get_balance() == pytest.approx(1500.50)
+    assert sample_account.masked_number == "***0001"

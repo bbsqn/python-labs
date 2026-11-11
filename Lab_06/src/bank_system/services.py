@@ -77,7 +77,6 @@ class BankingService:
                 f"Рахунок одержувача {to_account_number} не знайдено."
             )
 
-        # Спочатку знімаємо (перевірка балансу та виняток у разі нестачі)
         source.withdraw(amount)
         target.deposit(amount)
 

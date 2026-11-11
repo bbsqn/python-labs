@@ -2,7 +2,11 @@
 
 from dataclasses import asdict, dataclass
 
-from .exceptions import AccountValidationError, InsufficientFundsError, InvalidAmountError
+from .exceptions import (
+    AccountValidationError,
+    InsufficientFundsError,
+    InvalidAmountError,
+)
 
 
 @dataclass(slots=True)
@@ -28,6 +32,28 @@ class Account:
         self.account_number = self.account_number.strip()
         self.client = self.client.strip()
         self.balance = float(self.balance)
+
+    @property
+    def client_name(self) -> str:
+        """Сумісність для назви клієнта."""
+        return self.client
+
+    @client_name.setter
+    def client_name(self, value: str) -> None:
+        self.client = value.strip()
+
+    @property
+    def masked_number(self) -> str:
+        """Маскований номер рахунку."""
+        return f"***{self.account_number[-4:]}"
+
+    def check_balance(self) -> float:
+        """Отримати поточний залишок на рахунку."""
+        return self.balance
+
+    def get_balance(self) -> float:
+        """Отримати поточний залишок на рахунку."""
+        return self.balance
 
     def deposit(self, amount: float) -> float:
         """Поповнення рахунку на вказану суму."""
@@ -61,6 +87,9 @@ class Account:
             "currency": self.currency,
             "is_active": self.is_active,
         }
+
+
+BankAccount = Account
 
 
 @dataclass(frozen=True, slots=True)
