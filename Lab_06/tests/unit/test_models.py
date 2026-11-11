@@ -7,7 +7,7 @@ from bank_system.exceptions import (
     InsufficientFundsError,
     InvalidAmountError,
 )
-from bank_system.models import Account
+from bank_system.models import Account, AccountRecord
 
 
 def test_account_creation_valid(sample_account: Account) -> None:
@@ -111,3 +111,50 @@ def test_to_dict_serialization(sample_account: Account) -> None:
     assert data["balance"] == pytest.approx(1500.50)
     assert data["currency"] == "UAH"
     assert data["is_active"] is True
+
+
+def test_account_record_dataclass() -> None:
+    """Перевірка створення незмінного запису AccountRecord та його серіалізації."""
+    record = AccountRecord(
+        account_number="UA20000002",
+        client="Тарас Шевченко",
+        balance=2500.75,
+        currency="USD",
+    )
+    assert record.account_number == "UA20000002"
+    assert record.client == "Тарас Шевченко"
+    assert record.balance == pytest.approx(2500.75)
+    assert record.currency == "USD"
+    data = record.to_dict()
+    assert data["account_number"] == "UA20000002"
+    assert data["currency"] == "USD"
+
+
+def test_account_default_currency_and_active() -> None:
+    """Перевірка значень за замовчуванням для валюти та активності рахунку."""
+    account = Account(account_number="UA30000003", client="Іван Франко")
+    assert account.balance == pytest.approx(0.0)
+    assert account.currency == "UAH"
+    assert account.is_active is True
+
+
+def test_account_whitespace_stripping() -> None:
+    """Перевірка автоматичного очищення пробілів у номері та імені клієнта."""
+    account = Account(
+        account_number="  UA40000004  ",
+        client="  Леся Українка  ",
+        balance=500.0,
+    )
+    assert account.account_number == "UA40000004"
+    assert account.client == "Леся Українка"
+
+
+def test_account_float_conversion() -> None:
+    """Перевірка автоматичного приведення цілочисельного балансу до типу float."""
+    account = Account(
+        account_number="UA50000005",
+        client="Григорій Сковорода",
+        balance=100,
+    )
+    assert isinstance(account.balance, float)
+    assert account.balance == pytest.approx(100.0)

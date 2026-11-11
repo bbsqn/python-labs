@@ -59,4 +59,3 @@ def test_empty_csv_import_and_export(tmp_path: Path) -> None:
     assert json_output.exists()
     content = json.loads(json_output.read_text(encoding="utf-8"))
     assert content == []
-

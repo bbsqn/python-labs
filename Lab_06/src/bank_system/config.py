@@ -37,4 +37,3 @@ def load_config() -> BankingConfig:
         allowed_operations=get_allowed_operations(),
         max_transaction_limit=limit,
     )
-

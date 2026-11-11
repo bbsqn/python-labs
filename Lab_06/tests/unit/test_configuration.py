@@ -48,3 +48,22 @@ def test_load_config_invalid_limit_fallback(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("BANK_MAX_TRANSACTION_LIMIT", "INVALID_LIMIT")
     config = load_config()
     assert config.max_transaction_limit == 100000.0
+
+
+def test_banking_config_defaults() -> None:
+    """Перевірка дефолтних параметрів датакласу BankingConfig."""
+    cfg = BankingConfig(
+        currency="UAH",
+        allowed_operations=("deposit",),
+        max_transaction_limit=50000.0,
+    )
+    assert cfg.currency == "UAH"
+    assert cfg.allowed_operations == ("deposit",)
+    assert cfg.max_transaction_limit == 50000.0
+
+
+def test_allowed_operations_empty_string(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Перевірка поведінки при порожньому значенні BANK_ALLOWED_OPERATIONS."""
+    monkeypatch.setenv("BANK_ALLOWED_OPERATIONS", "   ")
+    ops = get_allowed_operations()
+    assert ops == ()

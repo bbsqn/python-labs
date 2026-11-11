@@ -9,6 +9,7 @@ from bank_system.exceptions import (
     NotificationError,
     PaymentGatewayError,
 )
+from bank_system.models import Account
 from bank_system.protocols import Notifier
 from bank_system.repositories import FakeAccountRepository
 from bank_system.services import AsyncBankingGateway, BankingService
@@ -188,3 +189,45 @@ async def test_async_banking_gateway_network_error_side_effect(
 
     with pytest.raises(ConnectionError, match="Connection reset by peer"):
         await gateway.verify_transaction("UA00000001", 100.0)
+
+
+def test_fake_repository_list_all(populated_repository: FakeAccountRepository) -> None:
+    """Перевірка отримання повного списку рахунків з FakeAccountRepository."""
+    accounts = populated_repository.list_all()
+    assert len(accounts) == 3
+    numbers = {acc.account_number for acc in accounts}
+    assert numbers == {"UA00000001", "UA00000002", "UA00000003"}
+
+
+def test_fake_repository_total_funds_empty() -> None:
+    """Перевірка обчислення коштів для порожнього репозиторію."""
+    empty_repo = FakeAccountRepository()
+    assert empty_repo.total_funds() == pytest.approx(0.0)
+    assert len(empty_repo) == 0
+
+
+def test_fake_repository_filters_inactive_accounts() -> None:
+    """Перевірка виключення неактивних рахунків з розрахунку загальних коштів."""
+    repo = FakeAccountRepository()
+    active_acc = Account(
+        account_number="UA101",
+        client="Клієнт 1",
+        balance=1000.0,
+        is_active=True,
+    )
+    inactive_acc = Account(
+        account_number="UA102",
+        client="Клієнт 2",
+        balance=2000.0,
+        is_active=False,
+    )
+    repo.add(active_acc)
+    repo.add(inactive_acc)
+    assert len(repo) == 2
+    assert repo.total_funds() == pytest.approx(1000.0)
+
+
+def test_fake_repository_get_nonexistent_returns_none() -> None:
+    """Перевірка повернення None при запиті неіснуючого рахунку."""
+    repo = FakeAccountRepository()
+    assert repo.get("NON_EXISTENT") is None

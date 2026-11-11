@@ -35,4 +35,3 @@ class DataImportError(BankingError):
 
 class DataExportError(BankingError):
     """Помилка експорту банківських даних у формат JSON."""
-
