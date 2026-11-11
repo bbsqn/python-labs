@@ -1,198 +1,113 @@
-﻿"""Модульні тести доменних моделей та записів банківських операцій."""
-
-from dataclasses import FrozenInstanceError
+﻿"""Модульні тести доменних моделей та фінансових операцій (Account)."""
 
 import pytest
 
-from reliable_importer.exceptions import (
+from bank_system.exceptions import (
+    AccountValidationError,
     InsufficientFundsError,
-    InvalidTransactionError,
+    InvalidAmountError,
 )
-from reliable_importer.models import (
-    BankAccount,
-    BankAccountRecord,
-)
+from bank_system.models import Account
 
 
-def test_bank_account_record_creation(
-    sample_record: BankAccountRecord,
-) -> None:
-    """Перевірка створення незмінного запису операції та to_dict()."""
-    assert sample_record.account_number == "UA10000001"
-    assert sample_record.client == "Остап Зінчук"
-    assert sample_record.balance == pytest.approx(1500.50)
-    assert sample_record.operation == "deposit"
-    assert sample_record.amount == pytest.approx(200.00)
-    assert sample_record.new_balance == pytest.approx(1700.50)
-
-    data = sample_record.to_dict()
-    assert isinstance(data, dict)
-    assert data["account_number"] == "UA10000001"
-    assert data["new_balance"] == pytest.approx(1700.50)
-
-
-def test_bank_account_record_immutability(
-    sample_record: BankAccountRecord,
-) -> None:
-    """Перевірка незмінності об'єкта BankAccountRecord (frozen=True)."""
-    with pytest.raises((FrozenInstanceError, AttributeError)):
-        sample_record.balance = 9999.0  # type: ignore[misc]
-
-
-def test_bank_account_creation_valid() -> None:
-    """Перевірка коректного створення доменного об'єкта рахунку."""
-    acc = BankAccount(
-        account_number="  UA12345678  ",
-        client="  Остап Зінчук  ",
-        balance=500.25,
-    )
-    assert acc.account_number == "UA12345678"
-    assert acc.client == "Остап Зінчук"
-    assert acc.balance == pytest.approx(500.25)
-    assert acc.is_active is True
-
-
-def test_bank_account_creation_empty_account_number() -> None:
-    """Створення рахунку з порожнім номером має викликати виняток."""
-    with pytest.raises(
-        InvalidTransactionError,
-        match="Номер рахунку не може бути порожнім",
-    ):
-        BankAccount(account_number="   ", client="Остап")
-
-
-def test_bank_account_creation_empty_client() -> None:
-    """Створення рахунку з порожнім клієнтом має викликати виняток."""
-    with pytest.raises(
-        InvalidTransactionError,
-        match="Ім'я клієнта не може бути порожнім",
-    ):
-        BankAccount(account_number="UA123", client="   ")
-
-
-def test_bank_account_creation_negative_balance() -> None:
-    """Створення рахунку з від'ємним балансом має викликати виняток."""
-    with pytest.raises(
-        InvalidTransactionError,
-        match="Початковий баланс не може бути від'ємним",
-    ):
-        BankAccount(account_number="UA123", client="Остап", balance=-10.0)
-
-
-def test_bank_account_deposit_valid(sample_bank_account: BankAccount) -> None:
-    """Перевірка поповнення рахунку та заокруглення (pytest.approx)."""
-    new_bal = sample_bank_account.deposit(250.75)
-    assert new_bal == pytest.approx(1751.25)
-    assert sample_bank_account.balance == pytest.approx(1751.25)
-
-
-@pytest.mark.parametrize("invalid_amount", [0.0, -0.01, -100.0])
-def test_bank_account_deposit_invalid_amount(
-    sample_bank_account: BankAccount,
-    invalid_amount: float,
-) -> None:
-    """Поповнення нульовою чи від'ємною сумою має викликати помилку."""
-    with pytest.raises(
-        InvalidTransactionError,
-        match="Сума поповнення має бути додатньою",
-    ):
-        sample_bank_account.deposit(invalid_amount)
-
-
-def test_bank_account_withdraw_valid(sample_bank_account: BankAccount) -> None:
-    """Перевірка успішного зняття коштів у межах доступного залишку."""
-    new_bal = sample_bank_account.withdraw(500.50)
-    assert new_bal == pytest.approx(1000.00)
-    assert sample_bank_account.balance == pytest.approx(1000.00)
-
-
-def test_bank_account_withdraw_exact_balance(
-    sample_bank_account: BankAccount,
-) -> None:
-    """Перевірка зняття суми, що точно дорівнює залишковому балансу."""
-    new_bal = sample_bank_account.withdraw(1500.50)
-    assert new_bal == pytest.approx(0.0)
-    assert sample_bank_account.balance == pytest.approx(0.0)
-
-
-def test_bank_account_withdraw_insufficient_funds(
-    sample_bank_account: BankAccount,
-) -> None:
-    """Спроба овердрафту має викликати InsufficientFundsError."""
-    with pytest.raises(InsufficientFundsError) as exc_info:
-        sample_bank_account.withdraw(2000.00)
-
-    err = exc_info.value
-    assert err.account_number == "UA10000001"
-    assert err.balance == pytest.approx(1500.50)
-    assert err.amount == pytest.approx(2000.00)
-    assert "Недостатньо коштів" in str(err)
-
-
-@pytest.mark.parametrize("invalid_amount", [0.0, -10.0])
-def test_bank_account_withdraw_invalid_amount(
-    sample_bank_account: BankAccount,
-    invalid_amount: float,
-) -> None:
-    """Зняття некоректної суми має викликати помилку."""
-    with pytest.raises(
-        InvalidTransactionError,
-        match="Сума зняття має бути додатньою",
-    ):
-        sample_bank_account.withdraw(invalid_amount)
+def test_account_creation_valid(sample_account: Account) -> None:
+    """Перевірка успішної ініціалізації банківського рахунку з коректними даними."""
+    assert sample_account.account_number == "UA10000001"
+    assert sample_account.client == "Остап Зінчук"
+    assert sample_account.balance == pytest.approx(1500.50)
+    assert sample_account.currency == "UAH"
+    assert sample_account.is_active is True
 
 
 @pytest.mark.parametrize(
-    ("balance", "expected_tier"),
-    [
-        (0.0, "Standard"),
-        (500.0, "Standard"),
-        (999.99, "Standard"),
-        (1000.0, "Silver"),
-        (4999.99, "Silver"),
-        (5000.0, "Gold"),
-        (19999.99, "Gold"),
-        (20000.0, "Platinum"),
-        (50000.0, "Platinum"),
-    ],
+    "invalid_acc_num",
+    ["", "   "],
+    ids=["empty_string", "whitespace_only"],
 )
-def test_bank_account_classify_tier(
-    balance: float,
-    expected_tier: str,
-) -> None:
-    """Перевірка категоризації рахунків для повного покриття розгалужень."""
-    acc = BankAccount(
-        account_number="UA_TIER_TEST",
-        client="Тестер",
-        balance=balance,
-    )
-    assert acc.classify_tier() == expected_tier
+def test_account_creation_empty_number_raises(invalid_acc_num: str) -> None:
+    """Перевірка відхилення створення рахунку з порожнім номером."""
+    with pytest.raises(AccountValidationError, match="Номер рахунку не може бути порожнім"):
+        Account(account_number=invalid_acc_num, client="Тестовий Клієнт", balance=100.0)
 
 
-def test_bank_account_classify_tier_negative_raises() -> None:
-    """Від'ємний баланс у classify_tier має викликати помилку."""
-    acc = BankAccount("UA_TIER_TEST", "Тестер", 100.0)
-    acc.balance = -5.0
-    with pytest.raises(
-        InvalidTransactionError,
-        match="Баланс не може бути від'ємним",
-    ):
-        acc.classify_tier()
+@pytest.mark.parametrize(
+    "invalid_client",
+    ["", "   "],
+    ids=["empty_name", "whitespace_name"],
+)
+def test_account_creation_empty_client_raises(invalid_client: str) -> None:
+    """Перевірка відхилення створення рахунку з порожнім ім'ям клієнта."""
+    with pytest.raises(AccountValidationError, match="Ім'я клієнта не може бути порожнім"):
+        Account(account_number="UA12345678", client=invalid_client, balance=100.0)
 
 
-def test_bank_account_to_dict_and_representation(
-    sample_bank_account: BankAccount,
-) -> None:
-    """Перевірка серіалізації в словник, __eq__ та __repr__."""
-    data = sample_bank_account.to_dict()
+def test_account_creation_negative_balance_raises() -> None:
+    """Перевірка заборони ініціалізації рахунку з від'ємним початковим балансом."""
+    with pytest.raises(AccountValidationError, match="Початковий баланс не може бути від'ємним"):
+        Account(account_number="UA12345678", client="Іван Франко", balance=-50.0)
+
+
+def test_deposit_increases_balance(sample_account: Account) -> None:
+    """Перевірка коректного збільшення залишку при поповненні рахунку."""
+    initial_balance = sample_account.balance
+    new_balance = sample_account.deposit(250.75)
+
+    assert new_balance == pytest.approx(initial_balance + 250.75)
+    assert sample_account.balance == pytest.approx(1751.25)
+
+
+@pytest.mark.parametrize(
+    "invalid_amount",
+    [0.0, -0.01, -100.0],
+    ids=["zero_amount", "negative_cent", "large_negative"],
+)
+def test_deposit_invalid_amount_raises(sample_account: Account, invalid_amount: float) -> None:
+    """Перевірка відхилення поповнення рахунку на недопустиму суму (<= 0)."""
+    with pytest.raises(InvalidAmountError, match="Сума поповнення повинна бути додатною"):
+        sample_account.deposit(invalid_amount)
+
+
+def test_withdraw_decreases_balance(sample_account: Account) -> None:
+    """Перевірка коректного зменшення залишку при знятті коштів."""
+    initial_balance = sample_account.balance
+    new_balance = sample_account.withdraw(500.50)
+
+    assert new_balance == pytest.approx(initial_balance - 500.50)
+    assert sample_account.balance == pytest.approx(1000.00)
+
+
+def test_withdraw_boundary_exact_balance(sample_account: Account) -> None:
+    """Граничне тестування: повне зняття всіх коштів під нуль."""
+    balance_to_withdraw = sample_account.balance
+    new_balance = sample_account.withdraw(balance_to_withdraw)
+
+    assert new_balance == pytest.approx(0.0)
+    assert sample_account.balance == pytest.approx(0.0)
+
+
+def test_withdraw_insufficient_funds_raises(sample_account: Account) -> None:
+    """Перевірка заборони зняття суми, що перевищує поточний баланс рахунку."""
+    excessive_amount = sample_account.balance + 100.0
+    with pytest.raises(InsufficientFundsError, match="Недостатньо коштів"):
+        sample_account.withdraw(excessive_amount)
+
+
+@pytest.mark.parametrize(
+    "invalid_amount",
+    [0.0, -10.0],
+    ids=["zero_withdraw", "negative_withdraw"],
+)
+def test_withdraw_invalid_amount_raises(sample_account: Account, invalid_amount: float) -> None:
+    """Перевірка відхилення операції зняття на недопустиму суму (<= 0)."""
+    with pytest.raises(InvalidAmountError, match="Сума зняття повинна бути додатною"):
+        sample_account.withdraw(invalid_amount)
+
+
+def test_to_dict_serialization(sample_account: Account) -> None:
+    """Перевірка коректності словникової серіалізації сутності рахунку."""
+    data = sample_account.to_dict()
     assert data["account_number"] == "UA10000001"
-    assert data["tier"] == "Silver"
+    assert data["client"] == "Остап Зінчук"
+    assert data["balance"] == pytest.approx(1500.50)
+    assert data["currency"] == "UAH"
     assert data["is_active"] is True
-
-    acc_same = BankAccount("UA10000001", "Остап Зінчук", 1500.50)
-    assert sample_bank_account == acc_same
-    assert sample_bank_account != "non_account_object"
-
-    rep = repr(sample_bank_account)
-    assert "UA10000001" in rep
-    assert "Остап Зінчук" in rep

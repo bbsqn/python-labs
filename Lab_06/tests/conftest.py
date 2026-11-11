@@ -1,174 +1,91 @@
-"""Конфігурація pytest та спільні фікстури для тестів."""
+"""Конфігурація централізованих фікстур pytest для банківської системи."""
 
 from collections.abc import Callable
-from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from reliable_importer.models import (
-    BankAccount,
-    BankAccountRecord,
-)
-from reliable_importer.services import (
-    BankingService,
-    InMemoryAccountRepository,
-    Notifier,
-)
+from bank_system.models import Account
+from bank_system.protocols import AsyncBankingClient, Notifier
+from bank_system.repositories import FakeAccountRepository
 
 
 @pytest.fixture
-def sample_account_row() -> dict[str, str]:
-    """Фікстура коректного словника рядка банківської операції з CSV."""
-    return {
-        "account_number": "UA10000001",
-        "client": "Остап Зінчук",
-        "balance": "1500.50",
-        "operation": "deposit",
-        "amount": "200.00",
-    }
-
-
-@pytest.fixture
-def sample_bank_account() -> BankAccount:
-    """Фікстура стандартного доменного об'єкта банківського рахунку."""
-    return BankAccount(
+def sample_account() -> Account:
+    """Фікстура основного тестового банківського рахунку з ненульовим балансом."""
+    return Account(
         account_number="UA10000001",
         client="Остап Зінчук",
         balance=1500.50,
+        currency="UAH",
     )
 
 
 @pytest.fixture
-def sample_record() -> BankAccountRecord:
-    """Фікстура незмінного запису операції для експорту."""
-    return BankAccountRecord(
-        account_number="UA10000001",
-        client="Остап Зінчук",
-        balance=1500.50,
-        operation="deposit",
-        amount=200.00,
-        new_balance=1700.50,
+def empty_account() -> Account:
+    """Фікстура рахунку з нульовим початковим балансом."""
+    return Account(
+        account_number="UA10000002",
+        client="Марія Коваль",
+        balance=0.0,
+        currency="UAH",
     )
 
 
 @pytest.fixture
-def in_memory_repo() -> InMemoryAccountRepository:
-    """Фікстура In-Memory репозиторію з попередньо завантаженими рахунками."""
-    repo = InMemoryAccountRepository()
-    repo.add(BankAccount("UA10000001", "Остап Зінчук", 1500.50))
-    repo.add(BankAccount("UA10000002", "Марія Коваль", 3200.00))
-    repo.add(BankAccount("UA10000003", "Іван Франко", 500.00))
-    return repo
+def fake_repository() -> FakeAccountRepository:
+    """Фікстура ізольованого In-Memory тестового репозиторію."""
+    return FakeAccountRepository()
+
+
+@pytest.fixture
+def account_factory() -> Callable[..., Account]:
+    """Фабрика створення тестових банківських рахунків (Fixture Factory)."""
+    counter = 0
+
+    def _create(
+        account_number: str | None = None,
+        client: str = "Тестовий Клієнт",
+        balance: float = 1000.0,
+        currency: str = "UAH",
+    ) -> Account:
+        nonlocal counter
+        counter += 1
+        acc_num = account_number or f"UA{counter:08d}"
+        return Account(
+            account_number=acc_num,
+            client=client,
+            balance=balance,
+            currency=currency,
+        )
+
+    return _create
+
+
+@pytest.fixture
+def populated_repository(
+    fake_repository: FakeAccountRepository,
+    account_factory: Callable[..., Account],
+) -> FakeAccountRepository:
+    """Фікстура репозиторію з попередньо наповненим набором тестових рахунків."""
+    acc1 = account_factory("UA00000001", "Остап Зінчук", 1000.0)
+    acc2 = account_factory("UA00000002", "Олена Петренко", 2500.0)
+    acc3 = account_factory("UA00000003", "Іван Франко", 500.0)
+    fake_repository.add(acc1)
+    fake_repository.add(acc2)
+    fake_repository.add(acc3)
+    return fake_repository
 
 
 @pytest.fixture
 def mock_notifier() -> Mock:
-    """Фікстура Mock-об'єкта для інтерфейсу сповіщувача."""
-    notifier = Mock(spec=Notifier)
-    notifier.notify.return_value = True
-    return notifier
+    """Фікстура мок-об'єкта клієнтського сповіщувача зі специфікацією Notifier."""
+    return Mock(spec=Notifier)
 
 
 @pytest.fixture
-def banking_service(
-    in_memory_repo: InMemoryAccountRepository,
-    mock_notifier: Mock,
-) -> BankingService:
-    """Фікстура банківського сервісу зі зв'язаними залежностями."""
-    return BankingService(
-        repository=in_memory_repo,
-        notifier=mock_notifier,
-    )
-
-
-@pytest.fixture
-def account_factory() -> Callable[..., BankAccount]:
-    """Фабрична фікстура для динамічного створення рахунків з параметрами."""
-
-    def _create_account(
-        account_number: str = "UA99999999",
-        client: str = "Тестовий Клієнт",
-        balance: float = 1000.0,
-    ) -> BankAccount:
-        return BankAccount(
-            account_number=account_number,
-            client=client,
-            balance=balance,
-        )
-
-    return _create_account
-
-
-@pytest.fixture
-def sample_records_list() -> list[BankAccountRecord]:
-    """Фікстура списку записів для перевірки експорту."""
-    return [
-        BankAccountRecord(
-            account_number="UA10000001",
-            client="Остап Зінчук",
-            balance=1500.50,
-            operation="deposit",
-            amount=200.00,
-            new_balance=1700.50,
-        ),
-        BankAccountRecord(
-            account_number="UA10000002",
-            client="Марія Коваль",
-            balance=3200.00,
-            operation="withdraw",
-            amount=500.00,
-            new_balance=2700.00,
-        ),
-    ]
-
-
-@pytest.fixture
-def sample_csv_file(tmp_path: Path) -> Path:
-    """Фікстура тимчасового валідного CSV файлу банківських операцій."""
-    csv_file = tmp_path / "valid_accounts.csv"
-    content = (
-        "account_number,client,balance,operation,amount\n"
-        "UA10000001,Остап Зінчук,1500.50,deposit,200.00\n"
-        "UA10000002,Марія Коваль,3200.00,withdraw,500.00\n"
-        "UA10000003,Іван Франко,450.00,deposit,150.00\n"
-    )
-    csv_file.write_text(content, encoding="utf-8")
-    return csv_file
-
-
-@pytest.fixture
-def malformed_csv_file(tmp_path: Path) -> Path:
-    """Фікстура тимчасового CSV файлу з некоректними записами."""
-    csv_file = tmp_path / "malformed_accounts.csv"
-    content = (
-        "account_number,client,balance,operation,amount\n"
-        "UA10000001,Остап Зінчук,1500.50,deposit,200.00\n"
-        ",Невідомий Клієнт,500.00,deposit,100.00\n"
-        "UA10000002,Марія Коваль,not_a_number,deposit,100.00\n"
-        "UA10000003,Іван Франко,300.00,withdraw,100.00\n"
-    )
-    csv_file.write_text(content, encoding="utf-8")
-    return csv_file
-
-
-@pytest.fixture
-def sample_config_yaml(tmp_path: Path, sample_csv_file: Path) -> Path:
-    """Фікстура тимчасового коректного файлу конфігурації YAML."""
-    config_file = tmp_path / "config.yaml"
-    out_file = tmp_path / "output" / "accounts.json"
-    log_file = tmp_path / "logs" / "test.log"
-    content = (
-        f"input:\n"
-        f"  path: {sample_csv_file.as_posix()}\n"
-        f"output:\n"
-        f"  path: {out_file.as_posix()}\n"
-        f"processing:\n"
-        f"  minimum_balance: 100.0\n"
-        f"  skip_invalid: true\n"
-        f"logging:\n"
-        f"  level: INFO\n"
-        f"  path: {log_file.as_posix()}\n"
-    )
-    config_file.write_text(content, encoding="utf-8")
-    return config_file
+def mock_async_client() -> AsyncMock:
+    """Фікстура асинхронного мок-клієнта зовнішнього банківського шлюзу."""
+    client = AsyncMock(spec=AsyncBankingClient)
+    client.authorize.return_value = {"status": "APPROVED", "code": "AUTH_200"}
+    return client

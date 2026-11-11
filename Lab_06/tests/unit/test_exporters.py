@@ -1,124 +1,102 @@
-"""Модульні тести експорту даних, атомарного запису та утиліт."""
+"""Модульні тести імпорту/експорту файлів з використанням фікстури tmp_path."""
 
-from collections.abc import Iterator
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from reliable_importer.exceptions import DataExportError
-from reliable_importer.exporters import (
-    atomic_write,
-    export_accounts_json,
-)
-from reliable_importer.logging_config import mask_sensitive_account
-from reliable_importer.models import BankAccountRecord
-from reliable_importer.utils import logged_operation
+from bank_system.exceptions import DataExportError, DataImportError
+from bank_system.exporters import export_accounts_json, import_accounts_csv
+from bank_system.models import Account
 
 
-def test_export_accounts_json_success(
-    sample_records_list: list[BankAccountRecord],
-    tmp_path: Path,
+def test_export_accounts_json_creates_valid_file(tmp_path: Path, sample_account: Account) -> None:
+    """Перевірка коректного створення та структури вихідного JSON-файлу через tmp_path."""
+    output_file = tmp_path / "accounts_export.json"
+
+    export_accounts_json([sample_account], output_file)
+
+    assert output_file.exists()
+    content = json.loads(output_file.read_text(encoding="utf-8"))
+    assert len(content) == 1
+    record = content[0]
+    assert record["account_number"] == "UA10000001"
+    assert record["client"] == "Остап Зінчук"
+    assert record["balance"] == pytest.approx(1500.50)
+    assert record["currency"] == "UAH"
+
+
+def test_import_accounts_csv_valid_file(tmp_path: Path) -> None:
+    """Перевірка зчитування валідних рахунків з тимчасового CSV-файлу."""
+    csv_file = tmp_path / "valid_accounts.csv"
+    csv_file.write_text(
+        "account_number,client,balance,currency\n"
+        "UA00000001,Остап Зінчук,1200.50,UAH\n"
+        "UA00000002,Марія Коваль,3500.00,USD\n",
+        encoding="utf-8",
+    )
+
+    accounts = import_accounts_csv(csv_file)
+
+    assert len(accounts) == 2
+    assert accounts[0].account_number == "UA00000001"
+    assert accounts[0].balance == pytest.approx(1200.50)
+    assert accounts[1].currency == "USD"
+
+
+def test_import_accounts_csv_non_existent_file(tmp_path: Path) -> None:
+    """Перевірка винятку DataImportError при спробі імпорту неіснуючого файлу."""
+    missing_file = tmp_path / "non_existent.csv"
+    with pytest.raises(DataImportError, match="Файл імпорту не існує"):
+        import_accounts_csv(missing_file)
+
+
+def test_import_accounts_csv_missing_headers_raises(tmp_path: Path) -> None:
+    """Перевірка винятку при відсутності обов'язкових колонок у CSV."""
+    bad_csv = tmp_path / "bad_header.csv"
+    bad_csv.write_text("random_col1,random_col2\n1,2\n", encoding="utf-8")
+
+    with pytest.raises(DataImportError, match="не містить обов'язкових колонок"):
+        import_accounts_csv(bad_csv)
+
+
+def test_import_accounts_csv_malformed_balance_raises(tmp_path: Path) -> None:
+    """Перевірка виявлення некоректного числового значення балансу в рядку CSV."""
+    malformed_csv = tmp_path / "malformed.csv"
+    malformed_csv.write_text(
+        "account_number,client,balance,currency\n"
+        "UA00000001,Тестовий Клієнт,not_a_number,UAH\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DataImportError, match="некоректне значення балансу"):
+        import_accounts_csv(malformed_csv)
+
+
+def test_import_accounts_csv_empty_fields_raises(tmp_path: Path) -> None:
+    """Перевірка виявлення порожніх обов'язкових полів у рядку CSV."""
+    empty_csv = tmp_path / "empty_fields.csv"
+    empty_csv.write_text(
+        "account_number,client,balance,currency\n"
+        ",,500.0,UAH\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DataImportError, match="порожні обов'язкові поля"):
+        import_accounts_csv(empty_csv)
+
+
+def test_export_accounts_json_os_error_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Перевірка успішного експорту записів у формат JSON."""
-    out_file = tmp_path / "exported_accounts.json"
-    exported_count = export_accounts_json(sample_records_list, out_file)
+    """Перевірка обробки системної помилки збереження файлу в export_accounts_json."""
+    from pathlib import Path as RealPath
 
-    assert exported_count == 2
-    assert out_file.exists()
+    def broken_write_text(*args: object, **kwargs: object) -> None:
+        raise OSError("Диск захищено від запису")
 
-    with out_file.open("r", encoding="utf-8") as file:
-        data = json.load(file)
+    monkeypatch.setattr(RealPath, "write_text", broken_write_text)
+    out_file = tmp_path / "error.json"
 
-    assert len(data) == 2
-    assert data[0]["account_number"] == "UA10000001"
-    assert data[0]["balance"] == pytest.approx(1500.50)
-    assert data[1]["account_number"] == "UA10000002"
-
-
-def test_export_accounts_json_atomic_cleanup_on_failure(
-    sample_records_list: list[BankAccountRecord],
-    tmp_path: Path,
-) -> None:
-    """У разі аварії серіалізації тимчасовий .tmp файл видаляється."""
-    out_file = tmp_path / "broken_export.json"
-
-    with patch(
-        "json.dump",
-        side_effect=OSError("Симульований збій запису на диск"),
-    ):
-        with pytest.raises(DataExportError) as exc_info:
-            export_accounts_json(sample_records_list, out_file)
-
-    assert "Аварія атомарного збереження" in str(exc_info.value)
-    assert not out_file.exists()
-
-    temp_files = list(tmp_path.glob("*.tmp"))
-    assert len(temp_files) == 0
-
-
-def test_export_accounts_json_iterator_failure(
-    sample_records_list: list[BankAccountRecord],
-    tmp_path: Path,
-) -> None:
-    """Збій ітератора перед записом викликає DataExportError."""
-    out_file = tmp_path / "broken_iter.json"
-
-    def faulty_records_generator() -> Iterator[BankAccountRecord]:
-        yield sample_records_list[0]
-        raise RuntimeError("Симульований збій під час генерації")
-
-    with pytest.raises(DataExportError) as exc_info:
-        export_accounts_json(
-            faulty_records_generator(),
-            out_file,
-        )
-
-    assert "Помилка серіалізації або запису" in str(exc_info.value)
-    assert not out_file.exists()
-
-
-def test_atomic_write_success(tmp_path: Path) -> None:
-    """Перевірка успішного створення файлу через контекстний менеджер."""
-    target = tmp_path / "atomic_target.txt"
-    with atomic_write(target) as temp_target:
-        assert temp_target.suffix.endswith(".tmp")
-        temp_target.write_text("Дані для перевірки", encoding="utf-8")
-
-    assert target.exists()
-    assert target.read_text(encoding="utf-8") == "Дані для перевірки"
-
-
-@pytest.mark.parametrize(
-    ("raw_account", "expected_masked"),
-    [
-        ("UA10000001", "UA10****0001"),
-        ("UA123456", "UA12****3456"),
-        ("UA1234", "UA***34"),
-        ("UA1", "U***"),
-        ("", "***"),
-        ("   ", "***"),
-    ],
-)
-def test_mask_sensitive_account(
-    raw_account: str,
-    expected_masked: str,
-) -> None:
-    """Перевірка коректного маскування номерів рахунків різної довжини."""
-    assert mask_sensitive_account(raw_account) == expected_masked
-
-
-def test_logged_operation_success() -> None:
-    """Перевірка нормального проходження контекстного менеджера утиліти."""
-    executed = False
-    with logged_operation("Тестова операція"):
-        executed = True
-    assert executed is True
-
-
-def test_logged_operation_failure() -> None:
-    """Контекстний менеджер реєструє помилку та коректно її прокидає."""
-    with pytest.raises(ValueError, match="Збій операції"):
-        with logged_operation("Невдала операція"):
-            raise ValueError("Збій операції")
+    with pytest.raises(DataExportError, match="Помилка експорту в JSON"):
+        export_accounts_json([], out_file)
